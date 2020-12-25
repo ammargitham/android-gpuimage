@@ -563,8 +563,8 @@ public class GPUImage {
 
         @Override
         protected Bitmap decode(BitmapFactory.Options options) {
+            InputStream inputStream = null;
             try {
-                InputStream inputStream;
                 if (uri.getScheme().startsWith("http") || uri.getScheme().startsWith("https")) {
                     inputStream = new URL(uri.toString()).openStream();
                 } else if (uri.getPath().startsWith("/android_asset/")) {
@@ -575,6 +575,12 @@ public class GPUImage {
                 return BitmapFactory.decodeStream(inputStream, null, options);
             } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                if (inputStream != null) {
+                    try {
+                        inputStream.close();
+                    } catch (IOException ignored) {}
+                }
             }
             return null;
         }
