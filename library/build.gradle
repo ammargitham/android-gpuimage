@@ -33,7 +33,7 @@ ext {
     bintrayRepo = 'maven'
     bintrayName = 'gpuimage'
     bintrayUserOrg = 'cats-oss'
-    publishedGroupId = 'jp.co.cyberagent.android'
+    publishedGroupId = 'com.github.ammargitham'
     libraryName = 'gpuimage'
     artifact = 'gpuimage'
     libraryDescription = 'Image filters for Android with OpenGL (based on GPUImage for iOS)'
@@ -49,5 +49,5 @@ ext {
     allLicenses = ["Apache-2.0"]
 }
 
-apply from: 'https://gist.githubusercontent.com/wasabeef/cf14805bee509baf7461974582f17d26/raw/bintray-v1.gradle'
+// apply from: 'https://gist.githubusercontent.com/wasabeef/cf14805bee509baf7461974582f17d26/raw/bintray-v1.gradle'
 apply from: 'https://gist.githubusercontent.com/wasabeef/cf14805bee509baf7461974582f17d26/raw/install-v1.gradle'
