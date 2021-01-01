@@ -18,16 +18,20 @@ package jp.co.cyberagent.android.gpuimage.sample.activity
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Environment
+import android.util.Log
 import android.view.View
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import jp.co.cyberagent.android.gpuimage.GPUImage
 import jp.co.cyberagent.android.gpuimage.GPUImageView
-import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
+import jp.co.cyberagent.android.gpuimage.filter.*
 import jp.co.cyberagent.android.gpuimage.sample.GPUImageFilterTools
 import jp.co.cyberagent.android.gpuimage.sample.GPUImageFilterTools.FilterAdjuster
 import jp.co.cyberagent.android.gpuimage.sample.R
+import java.io.File
 
 class GalleryActivity : AppCompatActivity() {
 
@@ -41,7 +45,22 @@ class GalleryActivity : AppCompatActivity() {
 
         seekBar.setOnSeekBarChangeListener(object : OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                filterAdjuster?.adjust(progress)
+                val f = gpuImageView.filter
+                if (f is GPUImageFilterGroup) {
+                    try {
+                        val contrast = range(progress, 0.0f, 2.0f)
+                        val lineSize = range(progress, 0.0f, 5.0f)
+                        val filters = f.filters
+                        filters.clear()
+                        val sobelFilter = GPUImageDirectionalSobelEdgeDetectionFilter()
+                        sobelFilter.setLineSize(lineSize)
+                        gpuImageView.filter = GPUImageFilterGroup(mutableListOf(GPUImageContrastFilter(contrast), sobelFilter, GPUImageGrayscaleFilter()))
+                    } catch (e: Exception) {
+                        Log.e("test", "onProgressChanged: ", e)
+                    }
+                } else {
+                    filterAdjuster?.adjust(progress)
+                }
                 gpuImageView.requestRender()
             }
 
@@ -56,8 +75,16 @@ class GalleryActivity : AppCompatActivity() {
             }
         }
         findViewById<View>(R.id.button_save).setOnClickListener { saveImage() }
-
+        gpuImageView.setScaleType(GPUImage.ScaleType.CENTER_INSIDE)
         startPhotoPicker()
+    }
+
+    private fun range(percentage: Int, start: Float, end: Float): Float {
+        return (end - start) * percentage / 100.0f + start
+    }
+
+    private fun range(percentage: Int, start: Int, end: Int): Int {
+        return (end - start) * percentage / 100 + start
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -80,8 +107,10 @@ class GalleryActivity : AppCompatActivity() {
 
     private fun saveImage() {
         val fileName = System.currentTimeMillis().toString() + ".jpg"
-        gpuImageView.saveToPictures("GPUImage", fileName) { uri ->
-            Toast.makeText(this, "Saved: " + uri.toString(), Toast.LENGTH_SHORT).show()
+        val path: File = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+        val file = File(path, "GPUImage/$fileName")
+        gpuImageView.saveToPictures(file, true) { uri ->
+            Toast.makeText(this, "Saved: $uri", Toast.LENGTH_SHORT).show()
         }
     }
 

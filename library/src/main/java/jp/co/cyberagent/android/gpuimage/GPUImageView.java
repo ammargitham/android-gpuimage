@@ -26,18 +26,18 @@ import android.net.Uri;
 import android.opengl.GLSurfaceView;
 import android.os.AsyncTask;
 import android.os.Build;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewTreeObserver;
+import android.webkit.MimeTypeMap;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.util.concurrent.Semaphore;
 
@@ -48,6 +48,7 @@ import static jp.co.cyberagent.android.gpuimage.GPUImage.SURFACE_TYPE_SURFACE_VI
 import static jp.co.cyberagent.android.gpuimage.GPUImage.SURFACE_TYPE_TEXTURE_VIEW;
 
 public class GPUImageView extends FrameLayout {
+    private static final String TAG = GPUImageView.class.getSimpleName();
 
     private int surfaceType = SURFACE_TYPE_SURFACE_VIEW;
     private View surfaceView;
@@ -285,13 +286,14 @@ public class GPUImageView extends FrameLayout {
      * This method is async and will notify when the image was saved through the
      * listener.
      *
-     * @param folderName the folder name
-     * @param fileName   the file name
-     * @param listener   the listener
+     * @param file            the file
+     * @param shouldMediaScan should scan the saved file
+     * @param listener        the listener
      */
-    public void saveToPictures(final String folderName, final String fileName,
+    public void saveToPictures(final File file,
+                               final boolean shouldMediaScan,
                                final OnPictureSavedListener listener) {
-        new SaveTask(folderName, fileName, listener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        new SaveTask(file, shouldMediaScan, listener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     /**
@@ -301,16 +303,18 @@ public class GPUImageView extends FrameLayout {
      * This method is async and will notify when the image was saved through the
      * listener.
      *
-     * @param folderName the folder name
-     * @param fileName   the file name
-     * @param width      requested output width
-     * @param height     requested output height
-     * @param listener   the listener
+     * @param file            the file
+     * @param shouldMediaScan should scan the saved file
+     * @param width           requested output width
+     * @param height          requested output height
+     * @param listener        the listener
      */
-    public void saveToPictures(final String folderName, final String fileName,
-                               int width, int height,
+    public void saveToPictures(final File file,
+                               final boolean shouldMediaScan,
+                               int width,
+                               int height,
                                final OnPictureSavedListener listener) {
-        new SaveTask(folderName, fileName, width, height, listener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        new SaveTask(file, shouldMediaScan, width, height, listener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     /**
@@ -464,7 +468,7 @@ public class GPUImageView extends FrameLayout {
         protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
             if (forceSize != null) {
                 super.onMeasure(MeasureSpec.makeMeasureSpec(forceSize.width, MeasureSpec.EXACTLY),
-                        MeasureSpec.makeMeasureSpec(forceSize.height, MeasureSpec.EXACTLY));
+                                MeasureSpec.makeMeasureSpec(forceSize.height, MeasureSpec.EXACTLY));
             } else {
                 super.onMeasure(widthMeasureSpec, heightMeasureSpec);
             }
@@ -484,7 +488,7 @@ public class GPUImageView extends FrameLayout {
         protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
             if (forceSize != null) {
                 super.onMeasure(MeasureSpec.makeMeasureSpec(forceSize.width, MeasureSpec.EXACTLY),
-                        MeasureSpec.makeMeasureSpec(forceSize.height, MeasureSpec.EXACTLY));
+                                MeasureSpec.makeMeasureSpec(forceSize.height, MeasureSpec.EXACTLY));
             } else {
                 super.onMeasure(widthMeasureSpec, heightMeasureSpec);
             }
@@ -517,22 +521,26 @@ public class GPUImageView extends FrameLayout {
     }
 
     private class SaveTask extends AsyncTask<Void, Void, Void> {
-        private final String folderName;
-        private final String fileName;
+        private final File file;
         private final int width;
         private final int height;
+        private final boolean shouldMediaScan;
         private final OnPictureSavedListener listener;
         private final Handler handler;
 
-        public SaveTask(final String folderName, final String fileName,
+        public SaveTask(final File file,
+                        final boolean shouldMediaScan,
                         final OnPictureSavedListener listener) {
-            this(folderName, fileName, 0, 0, listener);
+            this(file, shouldMediaScan, 0, 0, listener);
         }
 
-        public SaveTask(final String folderName, final String fileName, int width, int height,
+        public SaveTask(File file,
+                        boolean shouldMediaScan,
+                        int width,
+                        int height,
                         final OnPictureSavedListener listener) {
-            this.folderName = folderName;
-            this.fileName = fileName;
+            this.file = file;
+            this.shouldMediaScan = shouldMediaScan;
             this.width = width;
             this.height = height;
             this.listener = listener;
@@ -543,41 +551,66 @@ public class GPUImageView extends FrameLayout {
         protected Void doInBackground(final Void... params) {
             try {
                 Bitmap result = width != 0 ? capture(width, height) : capture();
-                saveImage(folderName, fileName, result);
+                saveImage(file, result, shouldMediaScan);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
             return null;
         }
 
-        private void saveImage(final String folderName, final String fileName, final Bitmap image) {
-            File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-            File file = new File(path, folderName + "/" + fileName);
+        private void saveImage(final File file, final Bitmap image, final boolean shouldMediaScan) {
             try {
-                file.getParentFile().mkdirs();
-                image.compress(Bitmap.CompressFormat.JPEG, 80, new FileOutputStream(file));
-                MediaScannerConnection.scanFile(getContext(),
-                        new String[]{
-                                file.toString()
-                        }, null,
-                        new MediaScannerConnection.OnScanCompletedListener() {
-                            @Override
-                            public void onScanCompleted(final String path, final Uri uri) {
-                                if (listener != null) {
-                                    handler.post(new Runnable() {
+                final File parentFile = file.getParentFile();
+                if (parentFile == null) {
+                    throw new RuntimeException("Parent file is null");
+                }
+                //noinspection ResultOfMethodCallIgnored
+                parentFile.mkdirs();
+                image.compress(Bitmap.CompressFormat.JPEG, 100, new FileOutputStream(file));
+                if (shouldMediaScan) {
+                    MediaScannerConnection.scanFile(
+                            getContext(),
+                            new String[]{file.toString()},
+                            new String[]{MimeTypeMap.getSingleton().getMimeTypeFromExtension(getFileExtension(file.getName()))},
+                            new MediaScannerConnection.OnScanCompletedListener() {
+                                @Override
+                                public void onScanCompleted(final String path, final Uri uri) {
+                                    if (listener != null) {
+                                        handler.post(new Runnable() {
 
-                                        @Override
-                                        public void run() {
-                                            listener.onPictureSaved(uri);
-                                        }
-                                    });
+                                            @Override
+                                            public void run() {
+                                                listener.onPictureSaved(uri);
+                                            }
+                                        });
+                                    }
                                 }
                             }
-                        });
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
+                    );
+                    return;
+                }
+                if (listener != null) {
+                    handler.post(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            listener.onPictureSaved(Uri.fromFile(file));
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "saveImage: ", e);
             }
         }
+    }
+
+    private static String getFileExtension(String fullName) {
+        if (fullName == null) {
+            return null;
+        }
+        String fileName = new File(fullName).getName();
+        int dotIndex = fileName.lastIndexOf('.');
+        return (dotIndex == -1) ? "" : fileName.substring(dotIndex + 1);
     }
 
     public interface OnPictureSavedListener {

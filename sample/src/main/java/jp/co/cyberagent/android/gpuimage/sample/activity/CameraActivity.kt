@@ -18,6 +18,7 @@ package jp.co.cyberagent.android.gpuimage.sample.activity
 
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.view.View
 import android.widget.SeekBar
 import android.widget.SeekBar.OnSeekBarChangeListener
@@ -33,6 +34,7 @@ import jp.co.cyberagent.android.gpuimage.sample.utils.Camera2Loader
 import jp.co.cyberagent.android.gpuimage.sample.utils.CameraLoader
 import jp.co.cyberagent.android.gpuimage.sample.utils.doOnLayout
 import jp.co.cyberagent.android.gpuimage.util.Rotation
+import java.io.File
 
 class CameraActivity : AppCompatActivity() {
 
@@ -96,7 +98,9 @@ class CameraActivity : AppCompatActivity() {
     private fun saveSnapshot() {
         val folderName = "GPUImage"
         val fileName = System.currentTimeMillis().toString() + ".jpg"
-        gpuImageView.saveToPictures(folderName, fileName) {
+        val path: File = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+        val file = File(path, "$folderName/$fileName")
+        gpuImageView.saveToPictures(file, true) {
             Toast.makeText(this, "$folderName/$fileName saved", Toast.LENGTH_SHORT).show()
         }
     }
