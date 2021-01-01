@@ -604,7 +604,7 @@ public class GPUImageView extends FrameLayout {
         }
     }
 
-    private static String getFileExtension(String fullName) {
+    public static String getFileExtension(String fullName) {
         if (fullName == null) {
             return null;
         }
