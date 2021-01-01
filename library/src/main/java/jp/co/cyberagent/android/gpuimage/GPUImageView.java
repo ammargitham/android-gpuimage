@@ -39,6 +39,7 @@ import android.widget.ProgressBar;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.concurrent.Semaphore;
 
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter;
@@ -559,6 +560,7 @@ public class GPUImageView extends FrameLayout {
         }
 
         private void saveImage(final File file, final Bitmap image, final boolean shouldMediaScan) {
+            FileOutputStream fileOutputStream = null;
             try {
                 final File parentFile = file.getParentFile();
                 if (parentFile == null) {
@@ -566,7 +568,8 @@ public class GPUImageView extends FrameLayout {
                 }
                 //noinspection ResultOfMethodCallIgnored
                 parentFile.mkdirs();
-                image.compress(Bitmap.CompressFormat.JPEG, 100, new FileOutputStream(file));
+                fileOutputStream = new FileOutputStream(file);
+                image.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream);
                 if (shouldMediaScan) {
                     MediaScannerConnection.scanFile(
                             getContext(),
@@ -600,6 +603,12 @@ public class GPUImageView extends FrameLayout {
                 }
             } catch (Exception e) {
                 Log.e(TAG, "saveImage: ", e);
+            } finally {
+                if (fileOutputStream != null) {
+                    try {
+                        fileOutputStream.close();
+                    } catch (IOException ignored) {}
+                }
             }
         }
     }

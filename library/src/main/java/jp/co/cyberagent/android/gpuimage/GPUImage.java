@@ -524,6 +524,7 @@ public class GPUImage {
         }
 
         private void saveImage(final File file, final Bitmap image, final boolean shouldMediaScan) {
+            FileOutputStream fileOutputStream = null;
             try {
                 final File parentFile = file.getParentFile();
                 if (parentFile == null) {
@@ -531,7 +532,8 @@ public class GPUImage {
                 }
                 //noinspection ResultOfMethodCallIgnored
                 parentFile.mkdirs();
-                image.compress(Bitmap.CompressFormat.JPEG, 100, new FileOutputStream(file));
+                fileOutputStream = new FileOutputStream(file);
+                image.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream);
                 if (shouldMediaScan) {
                     MediaScannerConnection.scanFile(
                             context,
@@ -565,6 +567,12 @@ public class GPUImage {
                 }
             } catch (Exception e) {
                 Log.e(TAG, "saveImage: ", e);
+            } finally {
+                if (fileOutputStream != null) {
+                    try {
+                        fileOutputStream.close();
+                    } catch (IOException ignored) {}
+                }
             }
         }
     }
